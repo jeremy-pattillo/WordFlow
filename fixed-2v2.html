@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>BYU vs Utah Basketball - 2v2 Fixed</title>
+    <style>
+        body { 
+            margin: 0; 
+            padding: 20px; 
+            background: #333; 
+            font-family: Arial, sans-serif;
+            color: white;
+        }
+        canvas { 
+            border: 3px solid white; 
+            background: #8B4513;
+            display: block;
+            margin: 20px auto;
+        }
+        #info {
+            text-align: center;
+            font-size: 18px;
+            margin: 20px;
+        }
+        #controls {
+            text-align: center;
+            font-size: 16px;
+            background: #000;
+            padding: 15px;
+            margin: 10px auto;
+            width: 600px;
+            border-radius: 10px;
+        }
+        .score-byu {
+            color: #0066ff;
+        }
+        .score-utah {
+            color: #cc0000;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <h1>BYU vs Utah Basketball - 2v2</h1>
+        <p><span class="score-byu">BYU: <span id="score1">0</span></span> | <span class="score-utah">Utah: <span id="score2">0</span></span></p>
+        <p>Possession: <span id="possession">BYU Ball</span></p>
+        <p>Controlling: <span id="control">Player 1</span></p>
+        <p>Key Status: <span id="keyStatus">No keys pressed</span></p>
+    </div>
+    
+    <div id="controls">
+        <strong>CONTROLS:</strong><br>
+        Arrow Keys = Move | Space = Shoot/Steal | Shift = Pass/Block<br>
+        <strong>First to 5 wins!</strong>
+    </div>
+    
+    <canvas id="game" width="800" height="600"></canvas>
+    
+    <div id="winner" style="display:none; text-align:center; font-size:36px; margin:20px;"></div>
+
+    <script>
+        console.log('Starting game...');
+        
+        const canvas = document.getElementById('game');
+        const ctx = canvas.getContext('2d');
+        
+        // Game variables
+        let score1 = 0, score2 = 0;
+        let gameWon = false;
+        let keyPressed = '';
+        let currentPossession = 1;
+        let controlledPlayerIndex = 0;
+        let ballCleared = true;
+        let halfcourtLine = 350;
+        
+        // 4 players total (2v2)
+        let players = [
+            // BYU Team
+            {x: 200, y: 400, size: 25, color: '#0066ff', team: 1, hasBall: true, playerNumber: 1, isControlled: true},
+            {x: 150, y: 300, size: 25, color: '#0066ff', team: 1, hasBall: false, playerNumber: 2, isControlled: false},
+            
+            // Utah Team  
+            {x: 600, y: 200, size: 25, color: '#cc0000', team: 2, hasBall: false, playerNumber: 3, isControlled: false},
+            {x: 550, y: 350, size: 25, color: '#cc0000', team: 2, hasBall: false, playerNumber: 4, isControlled: false}
+        ];
+        
+        // Ball object
+        let ball = {
+            x: players[0].x,
+            y: players[0].y,
+            size: 10,
+            color: '#ff8800',
+            vx: 0,
+            vy: 0,
+            isShot: false
+        };
+        
+        // Hoop
+        let hoop = {
+            x: 400,
+            y: 100,
+            size: 30
+        };
+        
+        // Key handling
+        let keys = {};
+        
+        document.addEventListener('keydown', function(e) {
+            keys[e.code] = true;
+            keyPressed = e.code;
+            document.getElementById('keyStatus').textContent = 'Pressed: ' + e.code;
+            handleInput();
+            e.preventDefault();
+        });
+        
+        document.addEventListener('keyup', function(e) {
+            keys[e.code] = false;
+            e.preventDefault();
+        });
+        
+        function handleInput() {
+            if (gameWon) {
+                if (keys['KeyR']) {
+                    restart();
+                }
+                return;
+            }
+            
+            let player = players[controlledPlayerIndex];
+            
+            // Movement
+            if (keys['ArrowUp']) player.y -= 5;
+            if (keys['ArrowDown']) player.y += 5;
+            if (keys['ArrowLeft']) player.x -= 5;
+            if (keys['ArrowRight']) player.x += 5;
+            
+            // Keep player on court
+            player.x = Math.max(25, Math.min(775, player.x));
+            player.y = Math.max(25, Math.min(575, player.y));
+            
+            // Update ball position if player has it
+            if (player.hasBall) {
+                ball.x = player.x;
+                ball.y = player.y;
+            }
+            
+            // Shooting
+            if (keys['Space'] && player.hasBall) {
+                // Check halfcourt rule
+                if (ballCleared) {
+                    shoot();
+                } else {
+                    console.log('Must clear halfcourt first!');
+                }
+                keys['Space'] = false;
+            }
+            
+            // Steal attempt
+            if (keys['Space'] && !player.hasBall) {
+                attemptSteal();
+                keys['Space'] = false;
+            }
+            
+            // Passing
+            if (keys['ShiftLeft'] && player.hasBall) {
+                pass();
+                keys['ShiftLeft'] = false;
+            }
+        }
+        
+        function shoot() {
+            ball.isShot = true;
+            players[controlledPlayerIndex].hasBall = false;
+            
+            // Simple physics toward hoop
+            let dx = hoop.x - ball.x;
+            let dy = hoop.y - ball.y;
+            let distance = Math.sqrt(dx*dx + dy*dy);
+            
+            ball.vx = (dx / distance) * 8;
+            ball.vy = (dy / distance) * 8;
+        }
+        
+        function pass() {
+            let currentPlayer = players[controlledPlayerIndex];
+            
+            // Find nearest BYU teammate
+            let teammates = players.filter(p => p.team === 1 && p !== currentPlayer);
+            
+            if (teammates.length > 0) {
+                let nearest = teammates[0];
+                
+                currentPlayer.hasBall = false;
+                nearest.hasBall = true;
+                ball.x = nearest.x;
+                ball.y = nearest.y;
+                ball.isShot = false;
+                ball.vx = 0;
+                ball.vy = 0;
+                
+                // Switch control to teammate
+                controlledPlayerIndex = players.indexOf(nearest);
+                updateControlDisplay();
+                console.log('Passed to player ' + nearest.playerNumber);
+            }
+        }
+        
+        function attemptSteal() {
+            let player = players[controlledPlayerIndex];
+            
+            // Find ball carrier from other team
+            let ballCarrier = players.find(p => p.hasBall && p.team !== player.team);
+            
+            if (ballCarrier) {
+                let dist = Math.sqrt((player.x - ballCarrier.x)**2 + (player.y - ballCarrier.y)**2);
+                if (dist < 50) {
+                    ballCarrier.hasBall = false;
+                    player.hasBall = true;
+                    ball.x = player.x;
+                    ball.y = player.y;
+                    ball.isShot = false;
+                    ball.vx = 0;
+                    ball.vy = 0;
+                    
+                    currentPossession = player.team;
+                    ballCleared = false; // Must clear halfcourt after steal
+                    updatePossessionDisplay();
+                    console.log('Steal!');
+                }
+            }
+        }
+        
+        function updateBall() {
+            if (ball.isShot) {
+                ball.x += ball.vx;
+                ball.y += ball.vy;
+                ball.vy += 0.3; // gravity
+                
+                // Check if ball went in hoop
+                let dist = Math.sqrt((ball.x - hoop.x)**2 + (ball.y - hoop.y)**2);
+                if (dist < hoop.size && ball.y < hoop.y + 20) {
+                    if (currentPossession === 1) {
+                        score1++;
+                        document.getElementById('score1').textContent = score1;
+                    } else {
+                        score2++;
+                        document.getElementById('score2').textContent = score2;
+                    }
+                    
+                    resetAfterScore();
+                    
+                    if (score1 >= 5) {
+                        gameWon = true;
+                        document.getElementById('winner').innerHTML = 'BYU WINS!<br>Press R to restart';
+                        document.getElementById('winner').style.display = 'block';
+                    } else if (score2 >= 5) {
+                        gameWon = true;
+                        document.getElementById('winner').innerHTML = 'UTAH WINS!<br>Press R to restart';
+                        document.getElementById('winner').style.display = 'block';
+                    }
+                }
+                
+                // Ball misses - make it bounce and stay on screen
+                if (ball.y > 550) {
+                    ball.y = 550;
+                    ball.vy = -Math.abs(ball.vy) * 0.6; // bounce
+                    ball.vx *= 0.8; // slow down
+                }
+                
+                // Keep ball in horizontal bounds
+                if (ball.x < 25) {
+                    ball.x = 25;
+                    ball.vx = -ball.vx * 0.7;
+                } else if (ball.x > 775) {
+                    ball.x = 775;
+                    ball.vx = -ball.vx * 0.7;
+                }
+                
+                // Ball stops bouncing eventually
+                if (Math.abs(ball.vy) < 1 && ball.y > 540) {
+                    ball.isShot = false;
+                    ball.vx = 0;
+                    ball.vy = 0;
+                }
+            }
+        }
+        
+        function resetAfterScore() {
+            // Switch possession to opposing team
+            currentPossession = currentPossession === 1 ? 2 : 1;
+            ballCleared = true; // Ball is cleared after score
+            
+            // Position teams at baseline
+            players.forEach(p => p.hasBall = false);
+            
+            if (currentPossession === 1) {
+                // BYU gets ball
+                players[0].x = 350;
+                players[0].y = 520;
+                players[0].hasBall = true;
+                players[1].x = 450;
+                players[1].y = 520;
+                
+                controlledPlayerIndex = 0;
+                
+                // Utah on defense
+                players[2].x = 300;
+                players[2].y = 350;
+                players[3].x = 500;
+                players[3].y = 350;
+            } else {
+                // Utah gets ball
+                players[2].x = 350;
+                players[2].y = 520;
+                players[2].hasBall = true;
+                players[3].x = 450;
+                players[3].y = 520;
+                
+                // BYU on defense (you still control BYU player)
+                players[0].x = 300;
+                players[0].y = 350;
+                players[1].x = 500;
+                players[1].y = 350;
+                
+                controlledPlayerIndex = 0; // Always control BYU
+            }
+            
+            // Update ball position
+            let ballCarrier = players.find(p => p.hasBall);
+            ball.x = ballCarrier.x;
+            ball.y = ballCarrier.y;
+            ball.isShot = false;
+            ball.vx = 0;
+            ball.vy = 0;
+            
+            updatePossessionDisplay();
+            updateControlDisplay();
+        }
+        
+        function updatePossessionDisplay() {
+            let possessionElement = document.getElementById('possession');
+            if (currentPossession === 1) {
+                possessionElement.innerHTML = '<span class="score-byu">BYU Ball</span>';
+            } else {
+                possessionElement.innerHTML = '<span class="score-utah">Utah Ball</span>';
+            }
+        }
+        
+        function updateControlDisplay() {
+            document.getElementById('control').textContent = 'Player ' + players[controlledPlayerIndex].playerNumber;
+        }
+        
+        function checkBallCleared() {
+            if (!ballCleared) {
+                let ballCarrier = players.find(p => p.hasBall);
+                if (ballCarrier && ballCarrier.y > halfcourtLine) {
+                    ballCleared = true;
+                    console.log('Ball cleared!');
+                }
+            }
+        }
+        
+        function updateAI() {
+            players.forEach((player, index) => {
+                if (!player.isControlled) {
+                    if (player.hasBall) {
+                        // Move toward hoop
+                        if (player.x < hoop.x) player.x += 2;
+                        if (player.x > hoop.x) player.x -= 2;
+                        if (player.y > hoop.y + 100) player.y -= 2;
+                        
+                        // Utah AI shoots more aggressively
+                        if (player.team === 2 && Math.random() < 0.03 && ballCleared) {
+                            ball.isShot = true;
+                            player.hasBall = false;
+                            let dx = hoop.x - ball.x;
+                            let dy = hoop.y - ball.y;
+                            let distance = Math.sqrt(dx*dx + dy*dy);
+                            ball.vx = (dx / distance) * 7;
+                            ball.vy = (dy / distance) * 7;
+                        }
+                    } else {
+                        // Move toward ball or defend
+                        let target;
+                        if (ball.isShot) {
+                            target = ball;
+                        } else {
+                            let ballCarrier = players.find(p => p.hasBall);
+                            if (ballCarrier) {
+                                // Utah defenders are more aggressive
+                                let speed = player.team === 2 ? 1.5 : 0.8;
+                                target = {x: ballCarrier.x, y: ballCarrier.y};
+                                
+                                if (target) {
+                                    if (player.x < target.x) player.x += speed;
+                                    if (player.x > target.x) player.x -= speed;
+                                    if (player.y < target.y) player.y += speed;
+                                    if (player.y > target.y) player.y -= speed;
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Keep AI on court
+                    player.x = Math.max(25, Math.min(775, player.x));
+                    player.y = Math.max(25, Math.min(575, player.y));
+                }
+            });
+        }
+        
+        function draw() {
+            // Clear canvas
+            ctx.clearRect(0, 0, 800, 600);
+            
+            // Draw court
+            ctx.fillStyle = '#228B22';
+            ctx.fillRect(0, 0, 800, 600);
+            
+            ctx.fillStyle = '#8B4513';
+            ctx.fillRect(25, 25, 750, 550);
+            
+            // Halfcourt line
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(25, halfcourtLine);
+            ctx.lineTo(775, halfcourtLine);
+            ctx.stroke();
+            
+            // Red overlay if ball not cleared
+            if (!ballCleared) {
+                ctx.fillStyle = 'rgba(255, 0, 0, 0.3)';
+                ctx.fillRect(25, 25, 750, halfcourtLine - 25);
+                
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 16px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('MUST CLEAR HALFCOURT!', 400, halfcourtLine - 20);
+            }
+            
+            // Draw hoop
+            ctx.fillStyle = '#ff4500';
+            ctx.fillRect(hoop.x - 25, hoop.y - 5, 50, 10); // backboard
+            
+            ctx.strokeStyle = '#ff4500';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.arc(hoop.x, hoop.y + 15, hoop.size, 0, Math.PI * 2);
+            ctx.stroke();
+            
+            // Draw players
+            players.forEach((player, index) => {
+                ctx.fillStyle = player.color;
+                ctx.beginPath();
+                ctx.arc(player.x, player.y, player.size, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Player number
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '16px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(player.playerNumber.toString(), player.x, player.y + 5);
+                
+                // Controlled player highlight
+                if (player.isControlled) {
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.arc(player.x, player.y, player.size + 8, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+                
+                // Ball possession indicator
+                if (player.hasBall) {
+                    ctx.strokeStyle = '#ffff00';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.arc(player.x, player.y, player.size + 15, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+            });
+            
+            // Draw ball
+            ctx.fillStyle = ball.color;
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, ball.size, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+        }
+        
+        function restart() {
+            score1 = 0;
+            score2 = 0;
+            gameWon = false;
+            currentPossession = 1;
+            controlledPlayerIndex = 0;
+            ballCleared = true;
+            
+            document.getElementById('score1').textContent = '0';
+            document.getElementById('score2').textContent = '0';
+            document.getElementById('winner').style.display = 'none';
+            
+            players.forEach(p => p.hasBall = false);
+            players[0].hasBall = true;
+            players[0].isControlled = true;
+            players.forEach((p, i) => {
+                if (i !== 0) p.isControlled = false;
+            });
+            
+            ball.x = players[0].x;
+            ball.y = players[0].y;
+            ball.isShot = false;
+            ball.vx = 0;
+            ball.vy = 0;
+            
+            updatePossessionDisplay();
+            updateControlDisplay();
+        }
+        
+        function gameLoop() {
+            handleInput();
+            updateBall();
+            checkBallCleared();
+            updateAI();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // Initialize displays
+        updatePossessionDisplay();
+        updateControlDisplay();
+        
+        // Start the game
+        gameLoop();
+        
+        console.log('Game loaded and running!');
+        alert('Game loaded! BYU vs Utah 2v2 - Use arrow keys to move!');
+    </script>
+</body>
+</html>

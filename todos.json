@@ -1,0 +1,14 @@
+[
+  {
+    "id": 2,
+    "text": "Store",
+    "completed": true,
+    "created_at": "2025-09-05T11:52:43.831952"
+  },
+  {
+    "id": 3,
+    "text": "Thing 3",
+    "completed": true,
+    "created_at": "2025-09-05T11:52:52.335387"
+  }
+]

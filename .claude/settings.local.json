@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(streamlit run:*)",
+      "Bash(pip install:*)",
+      "Bash(python:*)",
+      "Bash(start index.html)",
+      "Bash(start halfcourt.html)",
+      "Bash(start simple-game.html)",
+      "Bash(git add:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

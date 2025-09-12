@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BYU vs Utah Basketball</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="game-container">
+        <div id="scoreboard">
+            <div>BYU: <span id="score1">0</span></div>
+            <div>Utah: <span id="score2">0</span></div>
+        </div>
+        <div id="controls">
+            <div><strong>HOW TO PLAY:</strong></div>
+            <div><strong>Offense:</strong></div>
+            <div>Arrow Keys: Move</div>
+            <div>Spacebar: Shoot</div>
+            <div>Shift: Pass</div>
+            <div><strong>Defense:</strong></div>
+            <div>Arrow Keys: Move</div>
+            <div>Spacebar: Steal</div>
+            <div>Shift: Block</div>
+            <div><strong>First to 5 wins!</strong></div>
+        </div>
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        <div id="winner" style="display: none;"></div>
+    </div>
+    <script src="game.js"></script>
+</body>
+</html>

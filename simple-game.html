@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>BYU vs Utah Basketball - WORKING VERSION</title>
+    <style>
+        body { 
+            margin: 0; 
+            padding: 20px; 
+            background: #333; 
+            font-family: Arial, sans-serif;
+            color: white;
+        }
+        canvas { 
+            border: 3px solid white; 
+            background: #8B4513;
+            display: block;
+            margin: 20px auto;
+        }
+        #info {
+            text-align: center;
+            font-size: 18px;
+            margin: 20px;
+        }
+        #controls {
+            text-align: center;
+            font-size: 16px;
+            background: #000;
+            padding: 15px;
+            margin: 10px auto;
+            width: 600px;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <h1>BYU vs Utah Basketball</h1>
+        <p>BYU: <span id="score1">0</span> | Utah: <span id="score2">0</span></p>
+        <p>Key Status: <span id="keyStatus">No keys pressed</span></p>
+    </div>
+    
+    <div id="controls">
+        <strong>CONTROLS:</strong><br>
+        Arrow Keys = Move | Space = Shoot/Steal | Shift = Pass/Block<br>
+        <strong>First to 5 wins!</strong>
+    </div>
+    
+    <canvas id="game" width="800" height="600"></canvas>
+    
+    <div id="winner" style="display:none; text-align:center; font-size:36px; margin:20px;"></div>
+
+    <script>
+        // Get canvas and context
+        const canvas = document.getElementById('game');
+        const ctx = canvas.getContext('2d');
+        
+        // Game variables
+        let score1 = 0, score2 = 0;
+        let gameWon = false;
+        let keyPressed = '';
+        
+        // Player object
+        let player = {
+            x: 200,
+            y: 400,
+            size: 25,
+            color: '#0066ff',
+            hasBall: true
+        };
+        
+        // AI players
+        let aiPlayers = [
+            {x: 150, y: 300, size: 25, color: '#0066ff', team: 1},
+            {x: 250, y: 500, size: 25, color: '#0066ff', team: 1},
+            {x: 600, y: 200, size: 25, color: '#cc0000', team: 2},
+            {x: 650, y: 350, size: 25, color: '#cc0000', team: 2},
+            {x: 550, y: 450, size: 25, color: '#cc0000', team: 2}
+        ];
+        
+        // Ball object
+        let ball = {
+            x: player.x,
+            y: player.y,
+            size: 10,
+            color: '#ff8800',
+            vx: 0,
+            vy: 0,
+            isShot: false
+        };
+        
+        // Hoop
+        let hoop = {
+            x: 400,
+            y: 100,
+            size: 30
+        };
+        
+        // Key handling
+        let keys = {};
+        
+        document.addEventListener('keydown', function(e) {
+            keys[e.code] = true;
+            keyPressed = e.code;
+            document.getElementById('keyStatus').textContent = 'Pressed: ' + e.code;
+            handleInput();
+            e.preventDefault();
+        });
+        
+        document.addEventListener('keyup', function(e) {
+            keys[e.code] = false;
+            e.preventDefault();
+        });
+        
+        function handleInput() {
+            if (gameWon) {
+                if (keys['KeyR']) {
+                    restart();
+                }
+                return;
+            }
+            
+            // Movement
+            if (keys['ArrowUp']) player.y -= 5;
+            if (keys['ArrowDown']) player.y += 5;
+            if (keys['ArrowLeft']) player.x -= 5;
+            if (keys['ArrowRight']) player.x += 5;
+            
+            // Keep player on court
+            player.x = Math.max(25, Math.min(775, player.x));
+            player.y = Math.max(25, Math.min(575, player.y));
+            
+            // Update ball position if player has it
+            if (player.hasBall) {
+                ball.x = player.x;
+                ball.y = player.y;
+            }
+            
+            // Shooting
+            if (keys['Space'] && player.hasBall) {
+                shoot();
+                keys['Space'] = false;
+            }
+            
+            // Passing (simplified)
+            if (keys['ShiftLeft'] && player.hasBall) {
+                pass();
+                keys['ShiftLeft'] = false;
+            }
+        }
+        
+        function shoot() {
+            ball.isShot = true;
+            player.hasBall = false;
+            
+            // Simple physics toward hoop
+            let dx = hoop.x - ball.x;
+            let dy = hoop.y - ball.y;
+            let distance = Math.sqrt(dx*dx + dy*dy);
+            
+            ball.vx = (dx / distance) * 8;
+            ball.vy = (dy / distance) * 8;
+        }
+        
+        function pass() {
+            // Find nearest teammate
+            let nearest = null;
+            let nearestDist = Infinity;
+            
+            aiPlayers.forEach(ai => {
+                if (ai.team === 1) {
+                    let dist = Math.sqrt((ai.x - player.x)**2 + (ai.y - player.y)**2);
+                    if (dist < nearestDist) {
+                        nearest = ai;
+                        nearestDist = dist;
+                    }
+                }
+            });
+            
+            if (nearest) {
+                ball.x = nearest.x;
+                ball.y = nearest.y;
+                player.hasBall = false;
+                nearest.hasBall = true;
+            }
+        }
+        
+        function updateBall() {
+            if (ball.isShot) {
+                ball.x += ball.vx;
+                ball.y += ball.vy;
+                ball.vy += 0.3; // gravity
+                
+                // Check if ball went in hoop
+                let dist = Math.sqrt((ball.x - hoop.x)**2 + (ball.y - hoop.y)**2);
+                if (dist < hoop.size && ball.y < hoop.y + 20) {
+                    score1++;
+                    document.getElementById('score1').textContent = score1;
+                    resetBall();
+                    
+                    if (score1 >= 5) {
+                        gameWon = true;
+                        document.getElementById('winner').innerHTML = 'BYU WINS!<br>Press R to restart';
+                        document.getElementById('winner').style.display = 'block';
+                    }
+                }
+                
+                // Ball out of bounds
+                if (ball.x < 0 || ball.x > 800 || ball.y > 600) {
+                    resetBall();
+                }
+            }
+        }
+        
+        function resetBall() {
+            ball.x = player.x;
+            ball.y = player.y;
+            ball.vx = 0;
+            ball.vy = 0;
+            ball.isShot = false;
+            player.hasBall = true;
+        }
+        
+        function updateAI() {
+            // Simple AI movement
+            aiPlayers.forEach(ai => {
+                if (ai.hasBall) {
+                    // Move toward hoop
+                    if (ai.x < hoop.x) ai.x += 1;
+                    if (ai.x > hoop.x) ai.x -= 1;
+                    if (ai.y > hoop.y) ai.y -= 1;
+                    
+                    // Sometimes shoot
+                    if (Math.random() < 0.02) {
+                        ball.isShot = true;
+                        ai.hasBall = false;
+                        let dx = hoop.x - ball.x;
+                        let dy = hoop.y - ball.y;
+                        let distance = Math.sqrt(dx*dx + dy*dy);
+                        ball.vx = (dx / distance) * 6;
+                        ball.vy = (dy / distance) * 6;
+                    }
+                } else {
+                    // Move toward ball or player with ball
+                    let target = ball;
+                    if (player.hasBall) target = player;
+                    
+                    if (ai.x < target.x) ai.x += 0.5;
+                    if (ai.x > target.x) ai.x -= 0.5;
+                    if (ai.y < target.y) ai.y += 0.5;
+                    if (ai.y > target.y) ai.y -= 0.5;
+                }
+            });
+        }
+        
+        function draw() {
+            // Clear canvas
+            ctx.clearRect(0, 0, 800, 600);
+            
+            // Draw court
+            ctx.fillStyle = '#228B22';
+            ctx.fillRect(0, 0, 800, 600);
+            
+            ctx.fillStyle = '#8B4513';
+            ctx.fillRect(25, 25, 750, 550);
+            
+            // Draw hoop
+            ctx.fillStyle = '#ff4500';
+            ctx.fillRect(hoop.x - 25, hoop.y - 5, 50, 10); // backboard
+            
+            ctx.strokeStyle = '#ff4500';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.arc(hoop.x, hoop.y + 15, hoop.size, 0, Math.PI * 2);
+            ctx.stroke();
+            
+            // Draw players
+            ctx.fillStyle = player.color;
+            ctx.beginPath();
+            ctx.arc(player.x, player.y, player.size, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // White outline for player
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+            
+            // Player number
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '16px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('1', player.x, player.y + 5);
+            
+            // Draw AI players
+            aiPlayers.forEach((ai, index) => {
+                ctx.fillStyle = ai.color;
+                ctx.beginPath();
+                ctx.arc(ai.x, ai.y, ai.size, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.fillStyle = '#ffffff';
+                ctx.fillText(ai.team.toString(), ai.x, ai.y + 5);
+            });
+            
+            // Draw ball
+            ctx.fillStyle = ball.color;
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, ball.size, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            
+            // Ball possession indicator
+            if (player.hasBall) {
+                ctx.strokeStyle = '#ffff00';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(player.x, player.y, player.size + 8, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+        }
+        
+        function restart() {
+            score1 = 0;
+            score2 = 0;
+            gameWon = false;
+            document.getElementById('score1').textContent = '0';
+            document.getElementById('score2').textContent = '0';
+            document.getElementById('winner').style.display = 'none';
+            resetBall();
+        }
+        
+        function gameLoop() {
+            handleInput();
+            updateBall();
+            updateAI();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // Start the game
+        gameLoop();
+        
+        // Test message
+        console.log('Game loaded and running!');
+        alert('Game loaded! Use arrow keys to move, space to shoot!');
+    </script>
+</body>
+</html>

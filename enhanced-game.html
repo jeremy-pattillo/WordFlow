@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>BYU vs Utah Basketball - Enhanced Graphics</title>
+    <style>
+        body { 
+            margin: 0; 
+            padding: 20px; 
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            font-family: 'Arial Black', Arial, sans-serif;
+            color: white;
+        }
+        canvas { 
+            border: 5px solid #fff; 
+            background: #8B4513;
+            display: block;
+            margin: 20px auto;
+            box-shadow: 0 0 30px rgba(0,0,0,0.5);
+            border-radius: 10px;
+        }
+        #info {
+            text-align: center;
+            font-size: 20px;
+            margin: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        #controls {
+            text-align: center;
+            font-size: 16px;
+            background: linear-gradient(45deg, #000, #333);
+            padding: 20px;
+            margin: 10px auto;
+            width: 600px;
+            border-radius: 15px;
+            border: 2px solid #fff;
+            box-shadow: 0 0 20px rgba(0,0,0,0.3);
+        }
+        .score {
+            display: inline-block;
+            padding: 10px 20px;
+            background: rgba(0,0,0,0.7);
+            border-radius: 10px;
+            margin: 0 20px;
+        }
+        #byu-score {
+            color: #0066ff;
+            border: 2px solid #0066ff;
+        }
+        #utah-score {
+            color: #cc0000;
+            border: 2px solid #cc0000;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <h1 style="font-size: 36px; margin: 10px;">🏀 BYU vs UTAH 🏀</h1>
+        <div>
+            <span id="byu-score" class="score">BYU: <span id="score1">0</span></span>
+            <span id="utah-score" class="score">UTAH: <span id="score2">0</span></span>
+        </div>
+        <p style="font-size: 14px; margin-top: 10px;">Key Status: <span id="keyStatus">Ready to play!</span></p>
+    </div>
+    
+    <div id="controls">
+        <strong>🎮 CONTROLS 🎮</strong><br>
+        <div style="margin: 10px 0;">
+            <span style="color: #0066ff;">⬆️⬇️⬅️➡️</span> Move Player | 
+            <span style="color: #ffff00;">🚀 SPACE</span> Shoot/Steal | 
+            <span style="color: #00ff00;">⚡ SHIFT</span> Pass/Block
+        </div>
+        <strong style="color: #ff6600;">🏆 FIRST TO 5 WINS! 🏆</strong>
+    </div>
+    
+    <canvas id="game" width="800" height="600"></canvas>
+    
+    <div id="winner" style="display:none; text-align:center; font-size:48px; margin:20px; color:#ffff00; text-shadow: 3px 3px 6px rgba(0,0,0,0.8);"></div>
+
+    <script>
+        const canvas = document.getElementById('game');
+        const ctx = canvas.getContext('2d');
+        
+        // Game variables
+        let score1 = 0, score2 = 0;
+        let gameWon = false;
+        let keyPressed = '';
+        let animationFrame = 0;
+        
+        // Player object with animation
+        let player = {
+            x: 200,
+            y: 400,
+            size: 30,
+            color: '#0066ff',
+            hasBall: true,
+            isJumping: false,
+            jumpTime: 0,
+            walkCycle: 0
+        };
+        
+        // AI players with better properties
+        let aiPlayers = [
+            {x: 150, y: 300, size: 30, color: '#0066ff', team: 1, walkCycle: 0},
+            {x: 250, y: 500, size: 30, color: '#0066ff', team: 1, walkCycle: 0},
+            {x: 600, y: 200, size: 30, color: '#cc0000', team: 2, walkCycle: 0},
+            {x: 650, y: 350, size: 30, color: '#cc0000', team: 2, walkCycle: 0},
+            {x: 550, y: 450, size: 30, color: '#cc0000', team: 2, walkCycle: 0}
+        ];
+        
+        // Ball with better graphics
+        let ball = {
+            x: player.x,
+            y: player.y,
+            size: 12,
+            color: '#ff8800',
+            vx: 0,
+            vy: 0,
+            isShot: false,
+            spin: 0
+        };
+        
+        // Enhanced hoop
+        let hoop = {
+            x: 400,
+            y: 100,
+            size: 35,
+            netAnimation: 0
+        };
+        
+        // Key handling (keeping the working version)
+        let keys = {};
+        
+        document.addEventListener('keydown', function(e) {
+            keys[e.code] = true;
+            keyPressed = e.code;
+            document.getElementById('keyStatus').textContent = 'Pressed: ' + e.code;
+            handleInput();
+            e.preventDefault();
+        });
+        
+        document.addEventListener('keyup', function(e) {
+            keys[e.code] = false;
+            e.preventDefault();
+        });
+        
+        function handleInput() {
+            if (gameWon) {
+                if (keys['KeyR']) {
+                    restart();
+                }
+                return;
+            }
+            
+            // Movement with animation
+            if (keys['ArrowUp']) {
+                player.y -= 5;
+                player.walkCycle += 0.3;
+            }
+            if (keys['ArrowDown']) {
+                player.y += 5;
+                player.walkCycle += 0.3;
+            }
+            if (keys['ArrowLeft']) {
+                player.x -= 5;
+                player.walkCycle += 0.3;
+            }
+            if (keys['ArrowRight']) {
+                player.x += 5;
+                player.walkCycle += 0.3;
+            }
+            
+            // Keep player on court
+            player.x = Math.max(35, Math.min(765, player.x));
+            player.y = Math.max(35, Math.min(565, player.y));
+            
+            // Update ball position if player has it
+            if (player.hasBall) {
+                ball.x = player.x;
+                ball.y = player.y + Math.sin(animationFrame * 0.2) * 5; // Dribbling animation
+            }
+            
+            // Shooting with jump animation
+            if (keys['Space'] && player.hasBall) {
+                shoot();
+                player.isJumping = true;
+                player.jumpTime = animationFrame;
+                keys['Space'] = false;
+            }
+            
+            // Passing
+            if (keys['ShiftLeft'] && player.hasBall) {
+                pass();
+                keys['ShiftLeft'] = false;
+            }
+        }
+        
+        function shoot() {
+            ball.isShot = true;
+            player.hasBall = false;
+            
+            // Enhanced shooting physics
+            let dx = hoop.x - ball.x;
+            let dy = hoop.y - ball.y;
+            let distance = Math.sqrt(dx*dx + dy*dy);
+            
+            ball.vx = (dx / distance) * 8;
+            ball.vy = (dy / distance) * 8 - 2; // Arc
+            ball.spin = 0.5;
+        }
+        
+        function pass() {
+            let nearest = null;
+            let nearestDist = Infinity;
+            
+            aiPlayers.forEach(ai => {
+                if (ai.team === 1) {
+                    let dist = Math.sqrt((ai.x - player.x)**2 + (ai.y - player.y)**2);
+                    if (dist < nearestDist) {
+                        nearest = ai;
+                        nearestDist = dist;
+                    }
+                }
+            });
+            
+            if (nearest) {
+                ball.x = nearest.x;
+                ball.y = nearest.y;
+                player.hasBall = false;
+                nearest.hasBall = true;
+            }
+        }
+        
+        function updateBall() {
+            if (ball.isShot) {
+                ball.x += ball.vx;
+                ball.y += ball.vy;
+                ball.vy += 0.4; // gravity
+                ball.spin += 0.2;
+                
+                // Enhanced scoring detection
+                let dist = Math.sqrt((ball.x - hoop.x)**2 + (ball.y - hoop.y)**2);
+                if (dist < hoop.size && ball.y > hoop.y - 10 && ball.y < hoop.y + 20 && ball.vy > 0) {
+                    score1++;
+                    document.getElementById('score1').textContent = score1;
+                    hoop.netAnimation = animationFrame;
+                    resetBall();
+                    
+                    if (score1 >= 5) {
+                        gameWon = true;
+                        document.getElementById('winner').innerHTML = '🎉 BYU WINS! 🎉<br><span style="font-size:24px;">Press R to restart</span>';
+                        document.getElementById('winner').style.display = 'block';
+                    }
+                }
+                
+                // Ball out of bounds
+                if (ball.x < 0 || ball.x > 800 || ball.y > 600) {
+                    resetBall();
+                }
+            }
+        }
+        
+        function resetBall() {
+            ball.x = player.x;
+            ball.y = player.y;
+            ball.vx = 0;
+            ball.vy = 0;
+            ball.isShot = false;
+            ball.spin = 0;
+            player.hasBall = true;
+        }
+        
+        function updateAI() {
+            aiPlayers.forEach(ai => {
+                if (ai.hasBall) {
+                    // Move toward hoop
+                    if (ai.x < hoop.x) ai.x += 1;
+                    if (ai.x > hoop.x) ai.x -= 1;
+                    if (ai.y > hoop.y) ai.y -= 1;
+                    ai.walkCycle += 0.2;
+                    
+                    // Sometimes shoot
+                    if (Math.random() < 0.02) {
+                        ball.isShot = true;
+                        ai.hasBall = false;
+                        let dx = hoop.x - ball.x;
+                        let dy = hoop.y - ball.y;
+                        let distance = Math.sqrt(dx*dx + dy*dy);
+                        ball.vx = (dx / distance) * 6;
+                        ball.vy = (dy / distance) * 6 - 1;
+                        ball.spin = 0.3;
+                    }
+                } else {
+                    // Move toward ball or player with ball
+                    let target = ball;
+                    if (player.hasBall) target = player;
+                    
+                    if (ai.x < target.x) ai.x += 0.8;
+                    if (ai.x > target.x) ai.x -= 0.8;
+                    if (ai.y < target.y) ai.y += 0.8;
+                    if (ai.y > target.y) ai.y -= 0.8;
+                    ai.walkCycle += 0.1;
+                }
+            });
+        }
+        
+        function drawPlayer(p, isMainPlayer = false) {
+            let jumpOffset = 0;
+            if (p.isJumping && animationFrame - p.jumpTime < 20) {
+                jumpOffset = -Math.sin((animationFrame - p.jumpTime) * 0.3) * 15;
+            }
+            
+            let y = p.y + jumpOffset;
+            
+            // Shadow
+            ctx.fillStyle = 'rgba(0,0,0,0.3)';
+            ctx.beginPath();
+            ctx.ellipse(p.x, p.y + 35, 15, 8, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Legs (with walking animation)
+            ctx.strokeStyle = p.color;
+            ctx.lineWidth = 6;
+            let legOffset = Math.sin(p.walkCycle) * 5;
+            ctx.beginPath();
+            ctx.moveTo(p.x - 8, y + 15);
+            ctx.lineTo(p.x - 10 + legOffset, y + 30);
+            ctx.moveTo(p.x + 8, y + 15);
+            ctx.lineTo(p.x + 10 - legOffset, y + 30);
+            ctx.stroke();
+            
+            // Body
+            ctx.fillStyle = p.color;
+            ctx.fillRect(p.x - 12, y - 20, 24, 35);
+            
+            // Arms (with movement)
+            ctx.strokeStyle = p.color;
+            ctx.lineWidth = 5;
+            let armOffset = Math.sin(p.walkCycle + 1) * 8;
+            ctx.beginPath();
+            ctx.moveTo(p.x - 12, y - 10);
+            ctx.lineTo(p.x - 20 + armOffset, y);
+            ctx.moveTo(p.x + 12, y - 10);
+            ctx.lineTo(p.x + 20 - armOffset, y);
+            ctx.stroke();
+            
+            // Head
+            ctx.fillStyle = '#FFDBAC';
+            ctx.beginPath();
+            ctx.arc(p.x, y - 30, 12, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Eyes
+            ctx.fillStyle = '#000';
+            ctx.fillRect(p.x - 4, y - 32, 2, 2);
+            ctx.fillRect(p.x + 2, y - 32, 2, 2);
+            
+            // Jersey number
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 14px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(p.team || '1', p.x, y - 5);
+            
+            // Main player highlight
+            if (isMainPlayer) {
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.arc(p.x, y, 40, 0, Math.PI * 2);
+                ctx.stroke();
+                
+                // Add crown emoji for main player
+                ctx.font = '20px Arial';
+                ctx.fillText('👑', p.x, y - 50);
+            }
+            
+            // Ball possession indicator
+            if (p.hasBall) {
+                ctx.strokeStyle = '#ffff00';
+                ctx.lineWidth = 4;
+                ctx.setLineDash([5, 5]);
+                ctx.beginPath();
+                ctx.arc(p.x, y, 45, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+        }
+        
+        function draw() {
+            animationFrame++;
+            
+            // Clear with gradient
+            let gradient = ctx.createLinearGradient(0, 0, 0, 600);
+            gradient.addColorStop(0, '#87CEEB');
+            gradient.addColorStop(1, '#228B22');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, 800, 600);
+            
+            // Court surface
+            ctx.fillStyle = '#CD853F';
+            ctx.fillRect(25, 25, 750, 550);
+            
+            // Court lines
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.rect(25, 25, 750, 550);
+            ctx.stroke();
+            
+            // Three-point arc
+            ctx.beginPath();
+            ctx.arc(hoop.x, 25, 120, 0.2 * Math.PI, 0.8 * Math.PI);
+            ctx.stroke();
+            
+            // Free throw line
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(hoop.x - 60, 150, 120, 4);
+            
+            // Key area
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.rect(hoop.x - 60, 25, 120, 125);
+            ctx.stroke();
+            
+            // Enhanced backboard
+            ctx.fillStyle = '#FF4500';
+            ctx.fillRect(hoop.x - 40, 25, 80, 15);
+            
+            // Backboard details
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.rect(hoop.x - 20, 35, 40, 25);
+            ctx.stroke();
+            
+            // Enhanced hoop
+            ctx.strokeStyle = '#FF4500';
+            ctx.lineWidth = 6;
+            ctx.beginPath();
+            ctx.arc(hoop.x, hoop.y + 15, hoop.size, 0, Math.PI * 2);
+            ctx.stroke();
+            
+            // Net with animation
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            let netSway = Math.sin(animationFrame * 0.1) * 2;
+            if (animationFrame - hoop.netAnimation < 30) {
+                netSway += Math.sin((animationFrame - hoop.netAnimation) * 0.5) * 8;
+            }
+            
+            for (let i = 0; i < 10; i++) {
+                let angle = (i / 10) * Math.PI * 2;
+                let startX = hoop.x + Math.cos(angle) * hoop.size;
+                let startY = hoop.y + 15 + Math.sin(angle) * hoop.size;
+                let endX = hoop.x + Math.cos(angle) * (hoop.size - 5) + netSway;
+                let endY = hoop.y + 35 + Math.sin(angle) * 8;
+                
+                ctx.beginPath();
+                ctx.moveTo(startX, startY);
+                ctx.lineTo(endX, endY);
+                ctx.stroke();
+            }
+            
+            // Draw all players
+            aiPlayers.forEach(ai => drawPlayer(ai));
+            drawPlayer(player, true);
+            
+            // Enhanced ball
+            ctx.save();
+            ctx.translate(ball.x, ball.y);
+            ctx.rotate(ball.spin);
+            
+            // Ball gradient
+            let ballGradient = ctx.createRadialGradient(-5, -5, 0, 0, 0, ball.size);
+            ballGradient.addColorStop(0, '#FFA500');
+            ballGradient.addColorStop(1, '#FF8800');
+            ctx.fillStyle = ballGradient;
+            
+            ctx.beginPath();
+            ctx.arc(0, 0, ball.size, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Basketball lines
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(-ball.size, 0);
+            ctx.lineTo(ball.size, 0);
+            ctx.moveTo(0, -ball.size);
+            ctx.lineTo(0, ball.size);
+            
+            // Curved lines
+            ctx.beginPath();
+            ctx.arc(0, 0, ball.size * 0.7, 0, Math.PI);
+            ctx.arc(0, 0, ball.size * 0.7, Math.PI, Math.PI * 2);
+            ctx.stroke();
+            
+            ctx.restore();
+        }
+        
+        function restart() {
+            score1 = 0;
+            score2 = 0;
+            gameWon = false;
+            document.getElementById('score1').textContent = '0';
+            document.getElementById('score2').textContent = '0';
+            document.getElementById('winner').style.display = 'none';
+            resetBall();
+        }
+        
+        function gameLoop() {
+            handleInput();
+            updateBall();
+            updateAI();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // Start the game
+        gameLoop();
+        
+        console.log('Enhanced basketball game loaded!');
+    </script>
+</body>
+</html>

@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BYU vs Utah - Halfcourt Basketball</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background: #404040;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        #game-container {
+            position: relative;
+            width: 900px;
+            height: 700px;
+        }
+
+        #scoreboard {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 10px;
+            display: flex;
+            justify-content: space-between;
+            gap: 40px;
+            font-size: 28px;
+            font-weight: bold;
+            z-index: 10;
+        }
+
+        #gameCanvas {
+            border: 4px solid #333;
+            background: #8B4513;
+            display: block;
+            margin: 0 auto;
+        }
+
+        #controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 16px;
+            line-height: 1.4;
+            z-index: 10;
+        }
+
+        #controls div {
+            margin: 4px 0;
+        }
+
+        #winner {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.95);
+            color: white;
+            padding: 40px;
+            border-radius: 20px;
+            font-size: 48px;
+            font-weight: bold;
+            text-align: center;
+            z-index: 20;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="scoreboard">
+            <div>BYU: <span id="score1">0</span></div>
+            <div>Utah: <span id="score2">0</span></div>
+        </div>
+        <div id="controls">
+            <div><strong>CONTROLS:</strong></div>
+            <div>Arrow Keys: Move</div>
+            <div>Spacebar: Shoot/Steal</div>
+            <div>Shift: Pass/Block</div>
+            <div><strong>First to 5 wins!</strong></div>
+        </div>
+        <canvas id="gameCanvas" width="900" height="700"></canvas>
+        <div id="winner"></div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let game;
+
+        class Game {
+            constructor() {
+                this.players = [];
+                this.ball = null;
+                this.score = { team1: 0, team2: 0 };
+                this.keys = {};
+                this.gameRunning = true;
+                this.gameWon = false;
+                
+                this.init();
+                this.setupEventListeners();
+                this.gameLoop();
+            }
+            
+            init() {
+                // Create ball
+                this.ball = new Ball(450, 500);
+                
+                // Create players (3v3 halfcourt)
+                this.players = [
+                    new Player(350, 500, 1, true, '#0066ff'),   // BYU player (you)
+                    new Player(300, 400, 1, false, '#0066ff'),  // BYU AI
+                    new Player(400, 600, 1, false, '#0066ff'),  // BYU AI
+                    new Player(550, 300, 2, false, '#cc0000'),  // Utah AI
+                    new Player(600, 450, 2, false, '#cc0000'),  // Utah AI
+                    new Player(500, 350, 2, false, '#cc0000')   // Utah AI
+                ];
+                
+                this.players[0].hasBall = true;
+                this.ball.holder = this.players[0];
+                
+                // Initial render
+                this.render();
+            }
+            
+            setupEventListeners() {
+                window.addEventListener('keydown', (e) => {
+                    this.keys[e.key] = true;
+                    this.keys[e.code] = true;
+                    e.preventDefault();
+                });
+                
+                window.addEventListener('keyup', (e) => {
+                    this.keys[e.key] = false;
+                    this.keys[e.code] = false;
+                    e.preventDefault();
+                });
+            }
+            
+            update() {
+                if (!this.gameRunning) return;
+                
+                if (this.gameWon) {
+                    if (this.keys['r'] || this.keys['R']) {
+                        this.restart();
+                    }
+                    return;
+                }
+                
+                this.handleInput();
+                this.updatePlayers();
+                this.updateBall();
+                this.checkCollisions();
+                this.updateAI();
+            }
+            
+            handleInput() {
+                const player = this.players[0];
+                
+                if (this.keys['ArrowUp']) {
+                    player.move(0, -1);
+                }
+                if (this.keys['ArrowDown']) {
+                    player.move(0, 1);
+                }
+                if (this.keys['ArrowLeft']) {
+                    player.move(-1, 0);
+                    player.facing = -1;
+                }
+                if (this.keys['ArrowRight']) {
+                    player.move(1, 0);
+                    player.facing = 1;
+                }
+                
+                if (this.keys[' '] || this.keys['Space']) {
+                    if (player.hasBall) {
+                        this.shoot(player);
+                    } else {
+                        this.attemptSteal(player);
+                    }
+                    this.keys[' '] = false;
+                    this.keys['Space'] = false;
+                }
+                
+                if (this.keys['Shift'] || this.keys['ShiftLeft'] || this.keys['ShiftRight']) {
+                    if (player.hasBall) {
+                        this.pass(player);
+                    } else {
+                        this.attemptBlock(player);
+                    }
+                    this.keys['Shift'] = false;
+                    this.keys['ShiftLeft'] = false;
+                    this.keys['ShiftRight'] = false;
+                }
+            }
+            
+            updatePlayers() {
+                this.players.forEach(player => {
+                    player.update();
+                });
+            }
+            
+            updateBall() {
+                this.ball.update();
+                
+                if (this.ball.isShot && !this.ball.holder && !this.gameWon) {
+                    if (this.checkShotSuccess()) {
+                        if (this.ball.shooter.team === 1) {
+                            this.score.team1 += 1;
+                        } else {
+                            this.score.team2 += 1;
+                        }
+                        this.updateScore();
+                        this.checkWinCondition();
+                        if (!this.gameWon) {
+                            this.resetAfterScore();
+                        }
+                    } else if (this.ball.y > canvas.height - 50) {
+                        this.ball.isShot = false;
+                        this.ball.vx = 0;
+                        this.ball.vy = 0;
+                    }
+                }
+            }
+            
+            shoot(player) {
+                if (!player.hasBall) return;
+                
+                this.ball.shoot(player);
+                player.hasBall = false;
+                player.isJumping = true;
+                player.jumpStartTime = Date.now();
+                this.ball.holder = null;
+            }
+            
+            pass(player) {
+                if (!player.hasBall) return;
+                
+                const teammate = this.getNearestTeammate(player);
+                if (teammate) {
+                    this.ball.holder = teammate;
+                    teammate.hasBall = true;
+                    this.ball.x = teammate.x;
+                    this.ball.y = teammate.y;
+                    player.hasBall = false;
+                }
+            }
+            
+            getNearestTeammate(player) {
+                let nearest = null;
+                let minDistance = Infinity;
+                
+                this.players.forEach(p => {
+                    if (p.team === player.team && p !== player) {
+                        const distance = this.getDistance(player, p);
+                        if (distance < minDistance) {
+                            nearest = p;
+                            minDistance = distance;
+                        }
+                    }
+                });
+                
+                return nearest;
+            }
+            
+            getDistance(p1, p2) {
+                const dx = p1.x - p2.x;
+                const dy = p1.y - p2.y;
+                return Math.sqrt(dx * dx + dy * dy);
+            }
+            
+            checkShotSuccess() {
+                const hoop = { x: 450, y: 100 };
+                
+                if (Math.abs(this.ball.x - hoop.x) < 40 && 
+                    Math.abs(this.ball.y - hoop.y) < 25) {
+                    return true;
+                }
+                
+                return false;
+            }
+            
+            updateAI() {
+                this.players.forEach((player, index) => {
+                    if (index === 0) return; // Skip human player
+                    
+                    if (player.hasBall) {
+                        if (Math.random() < 0.02) {
+                            this.shoot(player);
+                        } else {
+                            const hoop = { x: 450, y: 100 };
+                            this.moveToward(player, hoop);
+                        }
+                    } else {
+                        if (this.ball.holder && this.ball.holder.team !== player.team) {
+                            this.moveToward(player, this.ball.holder);
+                        } else if (!this.ball.holder) {
+                            this.moveToward(player, this.ball);
+                        }
+                    }
+                });
+            }
+            
+            moveToward(player, target) {
+                const dx = target.x - player.x;
+                const dy = target.y - player.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance > 10) {
+                    player.move(dx / distance * 0.7, dy / distance * 0.7);
+                    player.facing = dx > 0 ? 1 : -1;
+                }
+            }
+            
+            checkCollisions() {
+                this.players.forEach(player => {
+                    if (!this.ball.holder && this.getDistance(player, this.ball) < 35) {
+                        player.hasBall = true;
+                        this.ball.holder = player;
+                        this.ball.isShot = false;
+                        this.ball.vx = 0;
+                        this.ball.vy = 0;
+                    }
+                });
+            }
+            
+            updateScore() {
+                document.getElementById('score1').textContent = this.score.team1;
+                document.getElementById('score2').textContent = this.score.team2;
+            }
+            
+            checkWinCondition() {
+                if (this.score.team1 >= 5) {
+                    this.gameWon = true;
+                    this.showWinner('BYU WINS!');
+                } else if (this.score.team2 >= 5) {
+                    this.gameWon = true;
+                    this.showWinner('UTAH WINS!');
+                }
+            }
+            
+            showWinner(message) {
+                const winnerDiv = document.getElementById('winner');
+                winnerDiv.innerHTML = message + '<br><br>Press R to restart';
+                winnerDiv.style.display = 'block';
+            }
+            
+            attemptSteal(defender) {
+                const ballCarrier = this.ball.holder;
+                if (!ballCarrier || ballCarrier.team === defender.team) return;
+                
+                const distance = this.getDistance(defender, ballCarrier);
+                if (distance < 50) {
+                    ballCarrier.hasBall = false;
+                    defender.hasBall = true;
+                    this.ball.holder = defender;
+                    this.ball.x = defender.x;
+                    this.ball.y = defender.y;
+                }
+            }
+            
+            attemptBlock(defender) {
+                defender.isJumping = true;
+                defender.jumpStartTime = Date.now();
+            }
+
+            resetAfterScore() {
+                setTimeout(() => {
+                    this.ball = new Ball(450, 500);
+                    
+                    this.players.forEach(player => {
+                        player.hasBall = false;
+                    });
+                    
+                    this.players[0].hasBall = true;
+                    this.ball.holder = this.players[0];
+                    this.ball.x = this.players[0].x;
+                    this.ball.y = this.players[0].y;
+                }, 1000);
+            }
+            
+            restart() {
+                this.score = { team1: 0, team2: 0 };
+                this.gameWon = false;
+                document.getElementById('winner').style.display = 'none';
+                this.updateScore();
+                this.init();
+            }
+            
+            render() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                this.drawCourt();
+                
+                this.players.forEach(player => player.render(ctx));
+                
+                this.ball.render(ctx);
+            }
+            
+            drawCourt() {
+                // Court background
+                ctx.fillStyle = '#8B4513';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // Court boundaries
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.rect(50, 50, 800, 600);
+                ctx.stroke();
+                
+                // Three-point arc
+                ctx.beginPath();
+                ctx.arc(450, 50, 150, 0.3 * Math.PI, 0.7 * Math.PI);
+                ctx.stroke();
+                
+                // Free throw line
+                ctx.beginPath();
+                ctx.rect(350, 180, 200, 2);
+                ctx.fill();
+                
+                // Key (paint)
+                ctx.beginPath();
+                ctx.rect(380, 50, 140, 130);
+                ctx.stroke();
+                
+                // Backboard
+                ctx.fillStyle = '#ff4500';
+                ctx.fillRect(420, 50, 60, 8);
+                
+                // Hoop
+                ctx.strokeStyle = '#ff4500';
+                ctx.lineWidth = 6;
+                ctx.beginPath();
+                ctx.arc(450, 100, 20, 0, Math.PI * 2);
+                ctx.stroke();
+                
+                // Net
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 2;
+                for (let i = 0; i < 8; i++) {
+                    const angle = (i / 8) * Math.PI * 2;
+                    const startX = 450 + Math.cos(angle) * 20;
+                    const startY = 100 + Math.sin(angle) * 20;
+                    const endX = 450 + Math.cos(angle) * 15;
+                    const endY = 120 + Math.sin(angle) * 10;
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(startX, startY);
+                    ctx.lineTo(endX, endY);
+                    ctx.stroke();
+                }
+            }
+            
+            gameLoop() {
+                this.update();
+                this.render();
+                requestAnimationFrame(() => this.gameLoop());
+            }
+        }
+
+        class Player {
+            constructor(x, y, team, isPlayer, color) {
+                this.x = x;
+                this.y = y;
+                this.team = team;
+                this.isPlayer = isPlayer;
+                this.color = color;
+                this.hasBall = false;
+                this.facing = 1;
+                this.speed = 3;
+                this.isJumping = false;
+                this.jumpStartTime = 0;
+                this.dribbleOffset = 0;
+            }
+            
+            move(dx, dy) {
+                this.x += dx * this.speed;
+                this.y += dy * this.speed;
+                
+                // Keep player on court
+                this.x = Math.max(80, Math.min(820, this.x));
+                this.y = Math.max(80, Math.min(620, this.y));
+            }
+            
+            update() {
+                // Dribbling animation
+                if (this.hasBall && game.ball) {
+                    this.dribbleOffset = Math.sin(Date.now() * 0.01) * 8;
+                    game.ball.x = this.x;
+                    game.ball.y = this.y + this.dribbleOffset + 10;
+                }
+                
+                // Jump animation
+                if (this.isJumping && Date.now() - this.jumpStartTime > 500) {
+                    this.isJumping = false;
+                }
+            }
+            
+            render(ctx) {
+                let yOffset = 0;
+                if (this.isJumping) {
+                    const jumpProgress = (Date.now() - this.jumpStartTime) / 500;
+                    yOffset = -Math.sin(jumpProgress * Math.PI) * 25;
+                }
+                
+                const baseY = this.y + yOffset;
+                
+                // Body (rectangle)
+                ctx.fillStyle = this.color;
+                ctx.fillRect(this.x - 10, baseY - 15, 20, 30);
+                
+                // Head (circle)
+                ctx.fillStyle = '#ffdbac';
+                ctx.beginPath();
+                ctx.arc(this.x, baseY - 25, 12, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Arms
+                ctx.strokeStyle = this.color;
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.moveTo(this.x - 10, baseY - 10);
+                ctx.lineTo(this.x - 18, baseY);
+                ctx.moveTo(this.x + 10, baseY - 10);
+                ctx.lineTo(this.x + 18, baseY);
+                ctx.stroke();
+                
+                // Legs
+                ctx.beginPath();
+                ctx.moveTo(this.x - 5, baseY + 15);
+                ctx.lineTo(this.x - 8, baseY + 35);
+                ctx.moveTo(this.x + 5, baseY + 15);
+                ctx.lineTo(this.x + 8, baseY + 35);
+                ctx.stroke();
+                
+                // Highlight for human player
+                if (this.isPlayer) {
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.arc(this.x, baseY, 35, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+                
+                // Team number
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 16px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(this.team.toString(), this.x, baseY + 5);
+                
+                // Ball possession indicator
+                if (this.hasBall) {
+                    ctx.strokeStyle = '#ffff00';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.arc(this.x, baseY, 40, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+            }
+        }
+
+        class Ball {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.vx = 0;
+                this.vy = 0;
+                this.holder = null;
+                this.isShot = false;
+                this.shooter = null;
+            }
+            
+            shoot(player) {
+                this.shooter = player;
+                this.isShot = true;
+                
+                const hoop = { x: 450, y: 100 };
+                
+                const dx = hoop.x - this.x + (Math.random() - 0.5) * 60;
+                const dy = hoop.y - this.y + (Math.random() - 0.5) * 40;
+                
+                this.vx = dx * 0.06;
+                this.vy = dy * 0.06;
+            }
+            
+            update() {
+                if (this.isShot) {
+                    this.x += this.vx;
+                    this.y += this.vy;
+                    this.vy += 0.3; // gravity
+                    
+                    // Ball goes out of bounds
+                    if (this.x < 50 || this.x > 850 || this.y > 650) {
+                        this.isShot = false;
+                        this.vx = 0;
+                        this.vy = 0;
+                    }
+                }
+            }
+            
+            render(ctx) {
+                ctx.fillStyle = '#ff8800';
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, 12, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.strokeStyle = '#000000';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                // Basketball lines
+                ctx.beginPath();
+                ctx.moveTo(this.x - 12, this.y);
+                ctx.lineTo(this.x + 12, this.y);
+                ctx.moveTo(this.x, this.y - 12);
+                ctx.lineTo(this.x, this.y + 12);
+                ctx.stroke();
+            }
+        }
+
+        // Initialize game when page loads
+        window.addEventListener('load', () => {
+            game = new Game();
+        });
+
+        // Also initialize immediately
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!game) {
+                game = new Game();
+            }
+        });
+    </script>
+</body>
+</html>
