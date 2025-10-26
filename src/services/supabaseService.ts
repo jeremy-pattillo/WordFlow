@@ -6,7 +6,6 @@ import { DEFAULT_SM2_CONFIG } from '../lib/srs';
 type Deck = Database['public']['Tables']['decks']['Row'];
 type Card = Database['public']['Tables']['cards']['Row'];
 type ReviewState = Database['public']['Tables']['review_states']['Row'];
-type ReviewLog = Database['public']['Tables']['review_logs']['Row'];
 type UserStats = Database['public']['Tables']['user_stats']['Row'];
 type Rating = 'again' | 'hard' | 'good' | 'easy';
 
@@ -344,7 +343,7 @@ function calculateNextReview(
 // USER STATS
 // ============================================================================
 
-async function updateUserStatsAfterReview(rating: Rating): Promise<void> {
+async function updateUserStatsAfterReview(_rating: Rating): Promise<void> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -622,9 +621,10 @@ export async function generateAutoDeck(
   const existingWords = new Set(existingCards?.map((c) => c.front.toLowerCase()) || []);
 
   // Filter word bank
-  let availableWords = wordBank.filter(
-    (w) => !existingWords.has((language === 'spanish' ? w.spanish : w.tagalog).toLowerCase())
-  );
+  let availableWords = wordBank.filter((w) => {
+    const word = language === 'spanish' ? ('spanish' in w ? w.spanish : '') : ('tagalog' in w ? w.tagalog : '');
+    return word && !existingWords.has(word.toLowerCase());
+  });
 
   if (difficulty) {
     availableWords = availableWords.filter((w) => w.difficulty === difficulty);
@@ -662,15 +662,18 @@ export async function generateAutoDeck(
   const deck = await createDeck(deckName, language);
 
   // Prepare all cards for batch insert
-  const cardsToInsert = selectedWords.map((word) => ({
-    deck_id: deck.id,
-    front: (language === 'spanish' ? word.spanish : word.tagalog).trim(),
-    back: word.english.trim(),
-    pos: word.pos?.trim() || null,
-    example: null,
-    note: null,
-    audio_url: null,
-  }));
+  const cardsToInsert = selectedWords.map((word) => {
+    const front = language === 'spanish' ? ('spanish' in word ? word.spanish : '') : ('tagalog' in word ? word.tagalog : '');
+    return {
+      deck_id: deck.id,
+      front: front.trim(),
+      back: word.english.trim(),
+      pos: word.pos?.trim() || null,
+      example: null,
+      note: null,
+      audio_url: null,
+    };
+  });
 
   // Batch insert cards
   const { data: insertedCards, error: cardsError } = await supabase

@@ -1,5 +1,13 @@
-import { type Card } from '../db/schema';
 import { PronunciationButton } from './PronunciationButton';
+
+interface Card {
+  id: string;
+  front: string;
+  back: string;
+  pos: string | null;
+  example: string | null;
+  note: string | null;
+}
 
 interface CardFaceProps {
   card: Card;

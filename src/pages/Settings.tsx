@@ -1,8 +1,6 @@
-import { useNavigate } from 'react-router-dom';
 import { HomeButton } from '../components/HomeButton';
 
 export function Settings() {
-  const navigate = useNavigate();
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
