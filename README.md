@@ -1,137 +1,169 @@
-# TagalogFlash MVP
+# WordFlow
 
-A mobile-first PWA for learning Tagalog vocabulary using spaced repetition (SM-2 algorithm).
-
-## 🚀 Live Demo
-
-**[Try it now!](https://slimjimpattillo.github.io/Tagalog-Flashcard/)** - No account needed, just visit and start learning!
+Master Spanish and Tagalog with spaced repetition - A modern language learning platform with pronunciation, daily streaks, and smart review scheduling.
 
 ## Features
 
-- ✅ **Spaced Repetition** - SM-2 algorithm for optimal memory retention
-- ✅ **Auto-Generated Decks** - 500+ word bank with beginner, intermediate, and advanced levels
-- ✅ **Offline-First** - All data stored locally with IndexedDB
-- ✅ **Mobile-Optimized** - Touch-friendly interface with responsive design
-- ✅ **Keyboard Shortcuts** - Space to reveal, 1-4 to grade
-- ✅ **Progress Tracking** - Daily stats and recall distribution
-- ✅ **Leech Detection** - Identifies difficult cards that need extra practice
+- **Multi-Language Support**: Learn Spanish or Tagalog with 300+ vocabulary words per language
+- **Spaced Repetition**: SM-2 algorithm ensures optimal review timing for long-term retention
+- **Pronunciation**: Built-in text-to-speech using Web Speech API
+- **Daily Streaks**: Track your consistency with automatic streak counting (Mountain Time)
+- **Smart Metrics**:
+  - Words learned (words marked "easy" 3+ times)
+  - Cards due for review
+  - 7-day rolling average of daily reviews
+- **Auto-Generated Decks**: Create practice decks by difficulty level (Beginner, Intermediate, Advanced)
+- **Deck Management**: Create, rename, and organize your learning materials
+- **Keyboard Shortcuts**: Space to reveal, 1-4 to grade cards
+- **Mobile Responsive**: Learn on any device
 
 ## Tech Stack
 
 - **Frontend**: React 18 + TypeScript + Vite
-- **Styling**: Tailwind CSS
-- **Database**: IndexedDB via Dexie
-- **Routing**: React Router
-- **PWA**: Manifest + Service Worker ready
+- **UI**: Tailwind CSS
+- **Backend**: Supabase (PostgreSQL + Authentication)
+- **Routing**: React Router v6
+- **Deployment**: Vercel
 
 ## Getting Started
 
-### Install Dependencies
+### Prerequisites
+
+- Node.js 18+ and npm
+- Supabase account (free tier works)
+
+### Installation
+
+1. Clone the repository:
+```bash
+git clone https://github.com/SlimJimPattillo/wordflow.git
+cd wordflow
+```
+
+2. Install dependencies:
 ```bash
 npm install
 ```
 
-### Development
+3. Set up environment variables:
+
+   Create a `.env` file in the root directory:
+```env
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
+
+4. Set up the Supabase database:
+
+   Run the SQL schema in your Supabase project:
+   - Open the Supabase SQL Editor
+   - Copy and paste the contents of `supabase-schema.sql`
+   - Execute the script
+
+5. Start the development server:
 ```bash
 npm run dev
 ```
-Then open http://localhost:5173
 
-### Build for Production
-```bash
-npm run build
-```
-
-### Preview Production Build
-```bash
-npm run preview
-```
+6. Open [http://localhost:5173](http://localhost:5173) in your browser
 
 ## Project Structure
 
 ```
-src/
-├── components/       # Reusable UI components
-│   ├── CardFace.tsx
-│   ├── GradeBar.tsx
-│   ├── ProgressHeader.tsx
-│   └── StatTile.tsx
-├── data/            # Seed data
-│   └── wordbank.ts  # 500 Tagalog words
-├── db/              # Database layer
-│   └── schema.ts    # Dexie schema and types
-├── lib/             # Core logic
-│   └── srs.ts       # SM-2 algorithm
-├── pages/           # Route pages
-│   ├── Home.tsx
-│   ├── Review.tsx
-│   ├── Decks.tsx
-│   ├── Results.tsx
-│   └── Settings.tsx
-├── services/        # Business logic
-│   ├── deckService.ts
-│   └── reviewService.ts
-└── App.tsx          # Root component with routing
+wordflow/
+├── src/
+│   ├── components/       # Reusable UI components
+│   │   ├── CardFace.tsx
+│   │   ├── GradeBar.tsx
+│   │   ├── HomeButton.tsx
+│   │   ├── PronunciationButton.tsx
+│   │   └── ProtectedRoute.tsx
+│   ├── contexts/         # React Context providers
+│   │   ├── AuthContext.tsx      # User authentication
+│   │   └── LanguageContext.tsx  # Language selection
+│   ├── data/            # Word banks
+│   │   ├── wordbank.ts          # Tagalog vocabulary
+│   │   └── spanish-wordbank.ts  # Spanish vocabulary
+│   ├── lib/             # Core configuration
+│   │   └── supabase.ts          # Supabase client
+│   ├── pages/           # Route pages/views
+│   │   ├── Home.tsx
+│   │   ├── Login.tsx
+│   │   ├── Signup.tsx
+│   │   ├── ForgotPassword.tsx
+│   │   ├── Decks.tsx
+│   │   ├── DeckView.tsx
+│   │   ├── Review.tsx
+│   │   ├── Results.tsx
+│   │   └── Settings.tsx
+│   ├── services/        # API and business logic
+│   │   └── supabaseService.ts   # All database operations
+│   └── App.tsx          # Root component with routing
+├── supabase-schema.sql  # Database schema with RLS policies
+├── .env                 # Environment variables (not in git)
+└── package.json
 ```
 
-## Usage
+## Database Schema
 
-### 1. Generate a Deck
-- Go to **Decks** page
-- Click one of the difficulty buttons (Beginner, Intermediate, Advanced, or Mixed)
-- This creates a deck with 50 unique words
+The app uses Supabase (PostgreSQL) with Row Level Security:
 
-### 2. Review Cards
-- From the **Home** page, click **Start Review**
-- Tap or press **Space** to reveal the answer
-- Grade yourself using the buttons or keys **1-4**:
-  - **1 (Again)** - Forgot the word
-  - **2 (Hard)** - Remembered with difficulty
-  - **3 (Good)** - Remembered correctly
-  - **4 (Easy)** - Remembered easily
+- **users**: User accounts (managed by Supabase Auth)
+- **decks**: User-created flashcard decks
+- **cards**: Individual flashcards with word, translation, examples
+- **review_states**: SRS scheduling data per card
+- **review_logs**: Historical review performance
+- **user_stats**: Aggregate statistics (streak, total reviews)
 
-### 3. Track Progress
-- View daily stats on the Home page
-- Check recall distribution
-- Monitor leech cards (difficult words)
+All tables have RLS policies to ensure users can only access their own data.
+
+## Spaced Repetition Algorithm
+
+WordFlow uses the SuperMemo 2 (SM-2) algorithm for optimal review scheduling:
+
+- **Again**: Review soon (within next 4 cards)
+- **Hard**: Review moderately (within next 7 cards)
+- **Good**: Review later (within next 15 cards)
+- **Easy**: Review much later (within next 45 cards)
+
+The algorithm adjusts intervals based on your performance to maximize retention.
 
 ## Keyboard Shortcuts
 
 - **Space** - Reveal card answer
-- **1** - Grade as "Again"
+- **1** - Grade as "Again" (Forgot)
 - **2** - Grade as "Hard"
 - **3** - Grade as "Good"
 - **4** - Grade as "Easy"
 
-## Spaced Repetition Algorithm
+## Deployment
 
-This app uses a variant of the SM-2 algorithm with the following defaults:
+### Vercel Deployment
 
-- **Starting Ease Factor**: 2.5
-- **Ease Factor Floor**: 1.3
-- **Learning Steps**: 1 min, 10 min
-- **Graduating Interval**: 1 day
-- **Lapse Penalty**: -0.2 EF
-- **Leech Threshold**: 8 lapses
+1. Push your code to GitHub
 
-## Data Storage
+2. Import your repository in Vercel
 
-All data is stored locally in your browser using IndexedDB:
-- **Decks** - Your created decks
-- **Cards** - Flashcards with front/back and optional fields
-- **Review States** - Scheduling data (intervals, ease factors, due dates)
-- **Review Logs** - History of your reviews
+3. Set environment variables in Vercel:
+   - `VITE_SUPABASE_URL`
+   - `VITE_SUPABASE_ANON_KEY`
 
-## Future Enhancements
+4. Deploy!
 
-- Cloud sync and backup
-- Audio pronunciation
-- Typing mode for active recall
-- Reverse practice (English → Tagalog)
-- Streaks and gamification
-- Community shared decks
-- Grammar and phrases
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 
-MIT
+MIT License - feel free to use this project for learning or personal use.
+
+## Acknowledgments
+
+- Built with [Claude Code](https://claude.com/claude-code)
+- Spaced repetition algorithm inspired by SuperMemo
+- Vocabulary sourced from common language learning resources
+
+## Support
+
+For issues or questions, please open an issue on GitHub.
