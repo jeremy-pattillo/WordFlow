@@ -48,7 +48,7 @@ export interface Settings {
   theme: Theme;
 }
 
-export class TagalogFlashDB extends Dexie {
+export class WordFlowDB extends Dexie {
   decks!: Table<Deck, string>;
   cards!: Table<Card, string>;
   reviewStates!: Table<ReviewState, string>;
@@ -56,7 +56,7 @@ export class TagalogFlashDB extends Dexie {
   settings!: Table<Settings, number>;
 
   constructor() {
-    super('TagalogFlashDB');
+    super('WordFlowDB');
 
     this.version(1).stores({
       decks: 'id, name, createdAt, updatedAt',
@@ -68,4 +68,4 @@ export class TagalogFlashDB extends Dexie {
   }
 }
 
-export const db = new TagalogFlashDB();
+export const db = new WordFlowDB();

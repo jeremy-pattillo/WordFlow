@@ -1,5 +1,6 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { StatTile } from '../components/StatTile';
+import { HomeButton } from '../components/HomeButton';
 
 export function Results() {
   const navigate = useNavigate();
@@ -21,6 +22,11 @@ export function Results() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-green-50 to-white p-6">
       <div className="max-w-md mx-auto">
+        {/* Home Button */}
+        <div className="mb-4">
+          <HomeButton />
+        </div>
+
         {/* Celebration Header */}
         <div className="text-center mb-8">
           <div className="text-6xl mb-4">🎉</div>

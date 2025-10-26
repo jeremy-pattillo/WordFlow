@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { HomeButton } from '../components/HomeButton';
 
 export function Settings() {
   const navigate = useNavigate();
@@ -8,12 +9,9 @@ export function Settings() {
       <div className="max-w-md mx-auto">
         {/* Header */}
         <div className="mb-6">
-          <button
-            onClick={() => navigate('/')}
-            className="text-indigo-600 hover:text-indigo-700 mb-4 flex items-center gap-2"
-          >
-            ← Back to Home
-          </button>
+          <div className="mb-4">
+            <HomeButton />
+          </div>
           <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
         </div>
 
@@ -22,10 +20,10 @@ export function Settings() {
           <div className="p-4 bg-white rounded-lg shadow">
             <h2 className="text-lg font-semibold text-gray-900 mb-2">About</h2>
             <p className="text-sm text-gray-600 mb-2">
-              <strong>TagalogFlash</strong> v0.2.0
+              <strong>WordFlow</strong> v1.0.0
             </p>
             <p className="text-sm text-gray-600">
-              A mobile-first PWA for learning Tagalog vocabulary using spaced repetition (SM-2 algorithm).
+              A modern language learning app supporting Tagalog & Spanish with spaced repetition (SM-2 algorithm).
             </p>
           </div>
 

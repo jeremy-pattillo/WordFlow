@@ -1,5 +1,5 @@
 {
-  "name": "tagalog-flash",
+  "name": "wordflow",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -12,6 +12,7 @@
     "deploy": "gh-pages -d dist"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.76.1",
     "dexie": "^4.2.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",

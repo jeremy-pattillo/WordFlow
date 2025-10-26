@@ -1,10 +1,13 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useLanguage } from '../contexts/LanguageContext';
+import { HomeButton } from '../components/HomeButton';
 import { CardFace } from '../components/CardFace';
 import { GradeBar } from '../components/GradeBar';
 import { ProgressHeader } from '../components/ProgressHeader';
-import { getDueCards, recordReview, type DueCard } from '../services/reviewService';
-import type { Rating } from '../db/schema';
+import { getDueCards, recordReview, type DueCard } from '../services/supabaseService';
+
+type Rating = 'again' | 'hard' | 'good' | 'easy';
 
 interface QueuedCard extends DueCard {
   timesReviewed: number;
@@ -12,6 +15,7 @@ interface QueuedCard extends DueCard {
 
 export function Review() {
   const navigate = useNavigate();
+  const { selectedLanguage } = useLanguage();
   const [reviewQueue, setReviewQueue] = useState<QueuedCard[]>([]);
   const [currentCard, setCurrentCard] = useState<QueuedCard | null>(null);
   const [revealed, setRevealed] = useState(false);
@@ -57,7 +61,7 @@ export function Review() {
 
   async function loadCards() {
     try {
-      const dueCards = await getDueCards();
+      const dueCards = await getDueCards(selectedLanguage);
       if (dueCards.length === 0) {
         setTimeout(() => navigate('/'), 1000);
         return;
@@ -164,7 +168,7 @@ export function Review() {
         } else {
           // Session complete - no more cards
           navigate('/results', {
-            state: { stats: sessionStats, cardsReviewed: totalReviewed },
+            state: { stats: sessionStats, cardsReviewed: totalReviewed + 1 },
           });
           return;
         }
@@ -181,15 +185,18 @@ export function Review() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-500">Loading cards...</p>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-indigo-600 border-t-transparent"></div>
+          <p className="mt-4 text-gray-600">Loading cards...</p>
+        </div>
       </div>
     );
   }
 
   if (!currentCard) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-6">
+      <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-gray-50">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-gray-900 mb-2">
             No cards due!
@@ -197,7 +204,7 @@ export function Review() {
           <p className="text-gray-600 mb-6">Great job! Come back later for more practice.</p>
           <button
             onClick={() => navigate('/')}
-            className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg"
+            className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition"
           >
             Back to Home
           </button>
@@ -208,6 +215,11 @@ export function Review() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
+      {/* Home Button */}
+      <div className="p-4">
+        <HomeButton />
+      </div>
+
       {/* Progress Header */}
       <ProgressHeader
         current={totalReviewed + 1}
@@ -226,7 +238,7 @@ export function Review() {
             if (e.key === 'Enter') handleReveal();
           }}
         >
-          <CardFace card={currentCard} revealed={revealed} direction="tl_to_en" />
+          <CardFace card={currentCard} revealed={revealed} direction="tl_to_en" language={selectedLanguage} />
         </div>
 
         {/* Grade Bar */}
