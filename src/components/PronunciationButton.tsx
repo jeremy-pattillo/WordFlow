@@ -25,11 +25,8 @@ export function PronunciationButton({ text, language, className = '' }: Pronunci
 
     const utterance = new SpeechSynthesisUtterance(text);
 
-    // Set language code
-    utterance.lang = language === 'spanish' ? 'es-ES' : 'tl-PH';
-
     // Set speech parameters
-    utterance.rate = 0.9; // Slightly slower for learning
+    utterance.rate = 0.85; // Slower for clearer pronunciation
     utterance.pitch = 1.0;
     utterance.volume = 1.0;
 
@@ -38,15 +35,35 @@ export function PronunciationButton({ text, language, className = '' }: Pronunci
     utterance.onend = () => setSpeaking(false);
     utterance.onerror = () => setSpeaking(false);
 
-    // Try to find a voice that matches the language
+    // Get available voices and find the best match
     const voices = window.speechSynthesis.getVoices();
-    const languageCode = language === 'spanish' ? 'es' : 'tl';
-    const matchingVoice = voices.find(voice =>
-      voice.lang.startsWith(languageCode)
-    );
 
-    if (matchingVoice) {
-      utterance.voice = matchingVoice;
+    let bestVoice = null;
+
+    if (language === 'spanish') {
+      // Priority order: es-MX (Mexican), es-US (US Spanish), es-ES (Spain), any es-*
+      const priorities = ['es-MX', 'es-US', 'es-ES', 'es-'];
+
+      for (const priority of priorities) {
+        bestVoice = voices.find(voice => voice.lang.startsWith(priority));
+        if (bestVoice) break;
+      }
+
+      utterance.lang = bestVoice?.lang || 'es-US';
+    } else {
+      // Tagalog: Try Filipino voices (tl-PH, fil-PH) or fallback to en-PH
+      const priorities = ['tl-PH', 'fil-PH', 'tl-', 'fil-', 'en-PH'];
+
+      for (const priority of priorities) {
+        bestVoice = voices.find(voice => voice.lang.startsWith(priority));
+        if (bestVoice) break;
+      }
+
+      utterance.lang = bestVoice?.lang || 'tl-PH';
+    }
+
+    if (bestVoice) {
+      utterance.voice = bestVoice;
     }
 
     window.speechSynthesis.speak(utterance);
