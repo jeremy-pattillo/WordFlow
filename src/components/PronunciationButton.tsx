@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useEffect } from 'react';
 
 interface PronunciationButtonProps {
   text: string;
@@ -8,39 +8,64 @@ interface PronunciationButtonProps {
 
 export function PronunciationButton({ text, language, className = '' }: PronunciationButtonProps) {
   const [speaking, setSpeaking] = useState(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [supported, setSupported] = useState(true);
+
+  useEffect(() => {
+    if (!('speechSynthesis' in window)) {
+      setSupported(false);
+    }
+  }, []);
 
   const speak = () => {
-    if (speaking) return;
+    if (!supported || speaking) return;
 
-    // Stop any currently playing audio
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
+    // Cancel any ongoing speech
+    window.speechSynthesis.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(text);
+
+    // Set speech parameters
+    utterance.rate = 0.85;
+    utterance.pitch = 1.0;
+    utterance.volume = 1.0;
+
+    // Event handlers
+    utterance.onstart = () => setSpeaking(true);
+    utterance.onend = () => setSpeaking(false);
+    utterance.onerror = () => setSpeaking(false);
+
+    // Get available voices
+    const voices = window.speechSynthesis.getVoices();
+    let bestVoice = null;
+
+    if (language === 'spanish') {
+      // Try to find Spanish voices in priority order
+      const priorities = ['es-MX', 'es-US', 'es-ES', 'es-'];
+      for (const priority of priorities) {
+        bestVoice = voices.find(v => v.lang.startsWith(priority));
+        if (bestVoice) break;
+      }
+      utterance.lang = bestVoice?.lang || 'es-US';
+    } else {
+      // Try to find Tagalog voices
+      const priorities = ['tl-PH', 'fil-PH', 'tl-', 'fil-'];
+      for (const priority of priorities) {
+        bestVoice = voices.find(v => v.lang.startsWith(priority));
+        if (bestVoice) break;
+      }
+      utterance.lang = bestVoice?.lang || 'tl-PH';
     }
 
-    // Map language to Google Translate language code
-    const languageCode = language === 'spanish' ? 'es' : 'tl';
+    if (bestVoice) {
+      utterance.voice = bestVoice;
+    }
 
-    // Create Google Translate TTS URL
-    const ttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=${languageCode}&q=${encodeURIComponent(text)}`;
-
-    // Create and play audio
-    const audio = new Audio(ttsUrl);
-    audioRef.current = audio;
-
-    audio.addEventListener('play', () => setSpeaking(true));
-    audio.addEventListener('ended', () => setSpeaking(false));
-    audio.addEventListener('error', () => {
-      setSpeaking(false);
-      console.error('Failed to load pronunciation audio');
-    });
-
-    audio.play().catch((error) => {
-      console.error('Failed to play pronunciation:', error);
-      setSpeaking(false);
-    });
+    window.speechSynthesis.speak(utterance);
   };
+
+  if (!supported) {
+    return null;
+  }
 
   return (
     <button
