@@ -108,7 +108,7 @@ export function DeckView() {
               </p>
             </div>
             <button
-              onClick={() => navigate('/review')}
+              onClick={() => navigate('/review', { state: { deckId: deck.id } })}
               className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition"
             >
               Start Review

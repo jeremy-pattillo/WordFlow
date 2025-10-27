@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
 import { HomeButton } from '../components/HomeButton';
 import { CardFace } from '../components/CardFace';
@@ -15,7 +15,9 @@ interface QueuedCard extends DueCard {
 
 export function Review() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { selectedLanguage } = useLanguage();
+  const deckId = location.state?.deckId as string | undefined;
   const [reviewQueue, setReviewQueue] = useState<QueuedCard[]>([]);
   const [currentCard, setCurrentCard] = useState<QueuedCard | null>(null);
   const [revealed, setRevealed] = useState(false);
@@ -61,9 +63,9 @@ export function Review() {
 
   async function loadCards() {
     try {
-      const dueCards = await getDueCards(selectedLanguage);
+      const dueCards = await getDueCards(selectedLanguage, deckId);
       if (dueCards.length === 0) {
-        setTimeout(() => navigate('/'), 1000);
+        setTimeout(() => navigate(deckId ? `/deck/${deckId}` : '/'), 1000);
         return;
       }
 

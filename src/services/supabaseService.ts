@@ -170,7 +170,7 @@ export interface DueCard extends Card {
   review_state: ReviewState;
 }
 
-export async function getDueCards(language?: string): Promise<DueCard[]> {
+export async function getDueCards(language?: string, deckId?: string): Promise<DueCard[]> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -195,6 +195,10 @@ export async function getDueCards(language?: string): Promise<DueCard[]> {
 
   if (language) {
     cardQuery = cardQuery.eq('decks.language', language);
+  }
+
+  if (deckId) {
+    cardQuery = cardQuery.eq('deck_id', deckId);
   }
 
   const { data: cards, error: cardsError } = await cardQuery;
