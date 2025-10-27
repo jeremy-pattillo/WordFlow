@@ -300,7 +300,7 @@ function calculateNextReview(
   if (rating === 'again') {
     lapseCount++;
     repetition = 0;
-    intervalDays = config.learningStepsMinutes[0] / (24 * 60);
+    intervalDays = Math.round(config.learningStepsMinutes[0] / (24 * 60));
     easeFactor = Math.max(config.easeFactorFloor, easeFactor + config.lapsePenalty);
   }
   // Handle learning phase
@@ -310,10 +310,10 @@ function calculateNextReview(
       intervalDays = config.graduatingIntervalDays;
     } else if (rating === 'easy') {
       repetition = 1;
-      intervalDays = config.graduatingIntervalDays * 1.5;
+      intervalDays = Math.round(config.graduatingIntervalDays * 1.5);
       easeFactor = Math.min(2.7, easeFactor + 0.15);
     } else if (rating === 'hard') {
-      intervalDays = config.learningStepsMinutes[1] / (24 * 60);
+      intervalDays = Math.round(config.learningStepsMinutes[1] / (24 * 60));
     }
   }
   // Handle review phase
@@ -322,16 +322,17 @@ function calculateNextReview(
 
     if (rating === 'hard') {
       easeFactor = Math.max(config.easeFactorFloor, easeFactor - 0.15);
-      intervalDays = Math.max(1, intervalDays * 1.2);
+      intervalDays = Math.max(1, Math.round(intervalDays * 1.2));
     } else if (rating === 'good') {
-      intervalDays = intervalDays * easeFactor;
+      intervalDays = Math.round(intervalDays * easeFactor);
     } else if (rating === 'easy') {
       easeFactor = Math.min(2.7, easeFactor + 0.15);
-      intervalDays = intervalDays * easeFactor * 1.3;
+      intervalDays = Math.round(intervalDays * easeFactor * 1.3);
     }
   }
 
-  intervalDays = Math.round(intervalDays * 10) / 10;
+  // Ensure it's an integer (safety check)
+  intervalDays = Math.round(intervalDays);
   const dueAt = new Date(now.getTime() + intervalDays * 24 * 60 * 60 * 1000);
 
   return {
