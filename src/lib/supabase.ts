@@ -40,7 +40,6 @@ export type Database = {
           pos: string | null;
           example: string | null;
           note: string | null;
-          audio_url: string | null;
           created_at: string;
           updated_at: string;
         };

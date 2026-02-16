@@ -23,7 +23,6 @@ CREATE TABLE cards (
   pos TEXT,
   example TEXT,
   note TEXT,
-  audio_url TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
   updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
 );

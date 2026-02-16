@@ -240,7 +240,7 @@ export function Review() {
             if (e.key === 'Enter') handleReveal();
           }}
         >
-          <CardFace card={currentCard} revealed={revealed} direction="tl_to_en" language={selectedLanguage} />
+          <CardFace card={currentCard} revealed={revealed} direction="tl_to_en" />
         </div>
 
         {/* Grade Bar */}

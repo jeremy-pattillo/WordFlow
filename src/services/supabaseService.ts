@@ -90,7 +90,6 @@ export interface CreateCardData {
   pos?: string;
   example?: string;
   note?: string;
-  audio_url?: string;
 }
 
 export async function createCard(deckId: string, data: CreateCardData): Promise<Card> {
@@ -110,7 +109,6 @@ export async function createCard(deckId: string, data: CreateCardData): Promise<
       pos: data.pos?.trim() || null,
       example: data.example?.trim() || null,
       note: data.note?.trim() || null,
-      audio_url: data.audio_url || null,
     })
     .select()
     .single();
@@ -676,7 +674,6 @@ export async function generateAutoDeck(
       pos: word.pos?.trim() || null,
       example: null,
       note: null,
-      audio_url: null,
     };
   });
 

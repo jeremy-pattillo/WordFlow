@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { HomeButton } from '../components/HomeButton';
-import { PronunciationButton } from '../components/PronunciationButton';
 import { getDeck, getCardsForDeck, deleteCard } from '../services/supabaseService';
 
 interface Deck {
@@ -20,7 +19,6 @@ interface Card {
   pos: string | null;
   example: string | null;
   note: string | null;
-  audio_url: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -132,13 +130,7 @@ export function DeckView() {
                   <div className="flex-1">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <p className="text-xs text-gray-500 uppercase">{languageLabel}</p>
-                          <PronunciationButton
-                            text={card.front}
-                            language={deck.language as 'spanish' | 'tagalog'}
-                          />
-                        </div>
+                        <p className="text-xs text-gray-500 uppercase mb-1">{languageLabel}</p>
                         <p className="text-lg font-semibold text-gray-900">
                           {card.front}
                         </p>

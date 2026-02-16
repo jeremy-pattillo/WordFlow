@@ -1,5 +1,3 @@
-import { PronunciationButton } from './PronunciationButton';
-
 interface Card {
   id: string;
   front: string;
@@ -13,10 +11,9 @@ interface CardFaceProps {
   card: Card;
   revealed: boolean;
   direction?: 'tl_to_en' | 'en_to_tl';
-  language: 'spanish' | 'tagalog';
 }
 
-export function CardFace({ card, revealed, direction = 'tl_to_en', language }: CardFaceProps) {
+export function CardFace({ card, revealed, direction = 'tl_to_en' }: CardFaceProps) {
   const showFront = direction === 'tl_to_en';
   const frontText = showFront ? card.front : card.back;
   const backText = showFront ? card.back : card.front;
@@ -24,11 +21,6 @@ export function CardFace({ card, revealed, direction = 'tl_to_en', language }: C
   return (
     <div className="w-full max-w-md mx-auto">
       <div className="bg-white rounded-2xl shadow-lg p-8 min-h-[300px] flex flex-col justify-center items-center relative">
-        {/* Pronunciation Button - Top Right */}
-        <div className="absolute top-4 right-4">
-          <PronunciationButton text={frontText} language={language} />
-        </div>
-
         {/* Front side (always visible) */}
         <div className="text-center mb-6">
           <p className="text-4xl font-bold text-gray-900 mb-2">{frontText}</p>

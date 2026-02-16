@@ -1,12 +1,11 @@
 # WordFlow
 
-Master Spanish and Tagalog with spaced repetition - A modern language learning platform with pronunciation, daily streaks, and smart review scheduling.
+Master Spanish and Tagalog with spaced repetition - A modern language learning platform with daily streaks and smart review scheduling.
 
 ## Features
 
 - **Multi-Language Support**: Learn Spanish or Tagalog with 300+ vocabulary words per language
 - **Spaced Repetition**: SM-2 algorithm ensures optimal review timing for long-term retention
-- **Pronunciation**: Built-in text-to-speech using Web Speech API
 - **Daily Streaks**: Track your consistency with automatic streak counting (Mountain Time)
 - **Smart Metrics**:
   - Words learned (words marked "easy" 3+ times)
@@ -76,7 +75,6 @@ wordflow/
 │   │   ├── CardFace.tsx
 │   │   ├── GradeBar.tsx
 │   │   ├── HomeButton.tsx
-│   │   ├── PronunciationButton.tsx
 │   │   └── ProtectedRoute.tsx
 │   ├── contexts/         # React Context providers
 │   │   ├── AuthContext.tsx      # User authentication
