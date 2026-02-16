@@ -10,7 +10,6 @@ export function Signup() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -35,28 +34,10 @@ export function Signup() {
       setError(error.message);
       setLoading(false);
     } else {
-      setSuccess(true);
-      setLoading(false);
-      // Auto redirect after 2 seconds
-      setTimeout(() => navigate('/login'), 2000);
+      // User is automatically logged in when email confirmation is disabled
+      // Redirect to home page where they can select language
+      navigate('/');
     }
-  }
-
-  if (success) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-indigo-50 to-white flex items-center justify-center p-6">
-        <div className="max-w-md w-full bg-white rounded-2xl shadow-lg p-8 text-center">
-          <div className="text-6xl mb-4">✅</div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Check your email!</h2>
-          <p className="text-gray-600 mb-4">
-            We've sent you a confirmation link. Please check your email to verify your account.
-          </p>
-          <p className="text-sm text-gray-500">
-            Redirecting to login...
-          </p>
-        </div>
-      </div>
-    );
   }
 
   return (
